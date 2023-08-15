@@ -1,6 +1,7 @@
 import pygame
 import random
 import math
+from pygame.locals import *
 
 # Define constants
 SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
@@ -15,20 +16,30 @@ WHITE = (255, 255, 255)
 class Tree(pygame.sprite.Sprite):
     def __init__(self, x, y, color, quality):
         super().__init__()
-        self.image = pygame.Surface((BEE_SIZE * 2, BEE_SIZE * 2))
-        self.image.fill(color)  # Use the provided color for the tree
+        self.image = self.load_sprite()
+        self.change_colour(color)
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
         self.color = color  # Store the tree's color
         self.quality = quality
+
+    def load_sprite(self):
+        sprite_choices = ["sprites/building.png", "sprites/tree.png"]
+        sprite = pygame.image.load(random.choice(sprite_choices)).convert_alpha()
+        return pygame.transform.scale(sprite, (BEE_SIZE*3, BEE_SIZE*3))
+
+    def change_colour(self, new_color):
+        colourImage = pygame.Surface(self.image.get_size())
+        colourImage.fill(new_color)
+        self.image.blit(colourImage, (0,0), special_flags=pygame.BLEND_RGBA_MULT)
 
 # Bee class
 class Bee(pygame.sprite.Sprite):
     def __init__(self, id):
         super().__init__()
         self.id=id
-        self.image = pygame.Surface((BEE_SIZE, BEE_SIZE))
-        self.image.fill(WHITE)  # Replace this with your bee image
+        self.set_original_sprite() #pygame.Surface((BEE_SIZE, BEE_SIZE))
+        # self.image.fill(WHITE)  # Replace this with your bee image
         self.rect = self.image.get_rect()
         self.rect.center = (random.randint(100, SCREEN_WIDTH-100), random.randint(100, SCREEN_HEIGHT-100))
         self.angle = random.uniform(0, 2 * math.pi)  # Initial movement angle
@@ -39,6 +50,11 @@ class Bee(pygame.sprite.Sprite):
         self.tree_quality = None  # To store the quality score of the tree the bee is interacting with
         self.advertising_state = 0  # Counter to track the advertising state
         self.state = "FORAGING"
+        self.direction = True # True = left, False = right
+
+    def set_original_sprite(self):
+        sprite = pygame.image.load("sprites/bee.png").convert_alpha()
+        self.image = pygame.transform.scale(sprite, (BEE_SIZE, BEE_SIZE))
 
     def update(self):
         if self.state == "FORAGING":
@@ -56,6 +72,11 @@ class Bee(pygame.sprite.Sprite):
                 dx = (dx / distance) * self.speed
                 dy = (dy / distance) * self.speed
             self.rect.move_ip(dx, dy)
+
+            if (dx > 0 and self.direction) or (dx < 0 and not self.direction):
+                self.image = pygame.transform.flip(self.image, True, False)
+                self.direction = not self.direction
+
 
             # If bee is back at the center, reset its color and state
             if distance < 5:
@@ -82,7 +103,8 @@ class Bee(pygame.sprite.Sprite):
         self.at_tree = True
         self.tree_color = tree_color
         self.tree_quality = tree_quality
-        self.image.fill(tree_color)  # Change bee color to tree color
+        # self.image.fill(tree_color)  # Change bee color to tree color
+        self.change_colour(tree_color)
 
     def interact_with_other_bee(self, other_bee):
         # Opinion exchange behavior during advertising state
@@ -90,11 +112,17 @@ class Bee(pygame.sprite.Sprite):
             if other_bee.state == "FORAGING":
                 # print(f"Bee {self.id} interacting with Bee {other_bee.id}, setting to colour {self.tree_color}")
                 other_bee.image.fill(self.tree_color)
+                other_bee.change_colour(self.tree_color)
                 # other_bee.draw_border(border_color=(100, 30, 199))
 
     def draw_border(self, border_color=(255,255,0), thickness=3):
         # Draw colored border around the bee sprite during advertising state
-        pygame.draw.rect(self.image, border_color, self.image.get_rect(), thickness)
+        self.change_colour(border_color, border=True)
+
+    def change_colour(self, new_color, alpha=128, border=False):
+        colourImage = pygame.Surface(self.image.get_size()).convert_alpha()
+        colourImage.fill(new_color)
+        self.image.blit(colourImage, (0,0), special_flags=pygame.BLEND_RGBA_MULT)
 
     def random_walk(self):
         self.angle += random.uniform(-math.pi / 4, math.pi / 4)  # Change the angle slightly
@@ -107,12 +135,18 @@ class Bee(pygame.sprite.Sprite):
         # Keep the bee inside the screen bounds
         self.rect.clamp_ip(pygame.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
 
+        if (dx > 0 and self.direction) or (dx < 0 and not self.direction):
+            self.image = pygame.transform.flip(self.image, True, False)
+            self.direction = not self.direction
+
 # Beehive class
 class Beehive(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()  # Call the parent class constructor
-        self.image = pygame.Surface((BEE_SIZE * 2, BEE_SIZE * 2))
-        self.image.fill((255, 0, 0))  # Replace this with your beehive image
+        sprite = pygame.image.load("sprites/beehive.png").convert_alpha()
+        self.image = pygame.transform.scale(sprite, (BEE_SIZE*2, BEE_SIZE*2))
+        # self.image = pygame.Surface((BEE_SIZE * 2, BEE_SIZE * 2))
+        # self.image.fill((255, 0, 0))  # Replace this with your beehive image
         self.rect = self.image.get_rect()
         self.rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
 
